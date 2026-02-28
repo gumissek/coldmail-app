@@ -23,7 +23,7 @@ A local cold email tool with contact management, SMTP account rotation, file att
 4. [When to open the browser](#4-when-to-open-the-browser)
 5. [How to handle errors](#5-how-to-handle-errors)
 6. [Where to add links](#6-where-to-add-links)
-7. [Contact list (Brands)](#7-contact-list-brands)
+7. [Contact list (Lista kontaktów)](#7-contact-list-brands)
 8. [SMTP accounts (sending mailboxes)](#8-smtp-accounts-sending-mailboxes)
 9. [OpenAI key (for AI email improvement)](#9-openai-key-for-ai-email-improvement)
 10. [General app usage](#10-general-app-usage)
@@ -171,7 +171,7 @@ http://localhost:3000
 
 ## 6. Where to add links
 
-Links are website addresses you can insert into email content.  
+Linki are website addresses you can insert into email content.  
 They are stored in `data_source/links.csv` inside the `coldmail-app` folder.
 
 ### File format:
@@ -194,14 +194,14 @@ site name, https://site-address.com
 
 ### Adding a link through the app:
 1. Open the app in the browser at `http://localhost:3000`
-2. Click **"Links"** in the menu
+2. Click **"Linki"** in the menu
 3. Click the **"Add"** button
 4. Enter the site name and URL
 5. Click **"Save"**
 
 ---
 
-## 7. Contact list (Brands)
+## 7. Contact list (Lista kontaktów)
 
 Contacts (companies/people you send emails to) are stored in `data_source/brands.csv`.
 
@@ -221,7 +221,7 @@ First Last or Company Name, address@email.com
 3. Save (**Ctrl+S**)
 
 ### How to add a contact (via app):
-1. In the app click **"Brands"** in the left menu
+1. In the app click **"Lista kontaktów"** in the left menu
 2. Fill in the form with name and email address
 3. Click **"Add Brand"**
 
@@ -317,16 +317,16 @@ After opening `http://localhost:3000` you'll see a left-side menu. Click on each
 
 | Section | What it does |
 |---------|-------------|
-| **Compose** | Write and send a new email |
-| **Brands** | Manage your contact list |
-| **Links** | Manage website links |
-| **Logs** | History of sent emails |
+| **Wyślij mail** | Write and send a new email |
+| **Lista kontaktów** | Manage your contact list |
+| **Linki** | Manage website links |
+| **Historia** | History of sent emails |
 
 ---
 
 ### How to write and send an email:
 
-1. Click **"Compose"** in the left menu
+1. Click **"Wyślij mail"** in the left menu
 2. In the **"To"** field type the recipient's address or pick from the contact list
 3. Enter the **subject** in the Subject field
 4. Write the **email body**
@@ -340,7 +340,7 @@ After opening `http://localhost:3000` you'll see a left-side menu. Click on each
 
 ### How to check sent email history:
 
-1. Click **"Logs"** in the menu
+1. Click **"Historia"** in the menu
 2. You'll see a list of all sent emails with date, recipient, and status
 3. All logs are also saved to `data_source/sent_mails.csv`
 
