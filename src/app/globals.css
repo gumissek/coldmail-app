@@ -18,6 +18,28 @@
   --warning: #f59e0b;
 }
 
+[data-theme="light"] {
+  --bg-primary: #f4f6f9;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f0f5;
+  --border: #dde0e7;
+  --border-hover: #b8bcc8;
+  --accent: #5b52e6;
+  --accent-hover: #4a42cc;
+  --accent-glow: rgba(91, 82, 230, 0.2);
+  --text-primary: #1a1a2e;
+  --text-secondary: #555570;
+  --text-muted: #8888a0;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #d97706;
+}
+
+html, html * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+
 * {
   margin: 0;
   padding: 0;

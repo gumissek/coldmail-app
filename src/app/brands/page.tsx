@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Users, Save } from 'lucide-react';
+import { useSettings } from '@/components/ThemeLanguageProvider';
 
 interface Brand {
   name: string;
@@ -9,6 +10,7 @@ interface Brand {
 }
 
 export default function BrandsPage() {
+  const { t } = useSettings();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBrand, setNewBrand] = useState({ name: '', email: '' });
@@ -34,18 +36,18 @@ export default function BrandsPage() {
 
   const addBrand = async () => {
     if (!newBrand.name.trim() || !newBrand.email.trim()) {
-      showToast('Wypełnij oba pola!', 'error');
+      showToast(t('brands.fill_both'), 'error');
       return;
     }
     if (!isValidEmail(newBrand.email)) {
-      showToast('Podaj poprawny adres email!', 'error');
+      showToast(t('brands.invalid_email'), 'error');
       return;
     }
     const duplicate = brands.some(
       b => b.email.trim().toLowerCase() === newBrand.email.trim().toLowerCase()
     );
     if (duplicate) {
-      showToast('Ten email już istnieje na liście!', 'error');
+      showToast(t('brands.duplicate'), 'error');
       return;
     }
     setSaving(true);
@@ -57,9 +59,9 @@ export default function BrandsPage() {
     if (res.ok) {
       setNewBrand({ name: '', email: '' });
       load();
-      showToast('Brand dodany pomyślnie!');
+      showToast(t('brands.added'));
     } else {
-      showToast('Błąd podczas dodawania', 'error');
+      showToast(t('brands.add_error'), 'error');
     }
     setSaving(false);
   };
@@ -70,42 +72,42 @@ export default function BrandsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete', index }),
     });
-    if (res.ok) { load(); showToast('Kontakt usunięty'); }
-    else showToast('Błąd podczas usuwania', 'error');
+    if (res.ok) { load(); showToast(t('brands.deleted')); }
+    else showToast(t('brands.delete_error'), 'error');
   };
 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }} className="glow-text">
-          Lista Kontaktów
+          {t('brands.title')}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-          Zarządzaj listą kontaktów do wysyłki cold maili.
+          {t('brands.subtitle')}
         </p>
       </div>
 
       {/* Add new */}
       <div className="card" style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Plus size={17} color="var(--accent)" /> Dodaj nowy kontakt
+          <Plus size={17} color="var(--accent)" /> {t('brands.add_new')}
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12 }}>
           <div>
-            <label className="label">Nazwa / Imię</label>
+            <label className="label">{t('brands.name_label')}</label>
             <input
               className="input"
-              placeholder="np. Andrzej Kowalski"
+              placeholder={t('brands.name_placeholder')}
               value={newBrand.name}
               onChange={e => setNewBrand(p => ({ ...p, name: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Adres email</label>
+            <label className="label">{t('brands.email_label')}</label>
             <input
               className="input"
               type="email"
-              placeholder="np. andrzej@firma.pl"
+              placeholder={t('brands.email_placeholder')}
               value={newBrand.email}
               onChange={e => setNewBrand(p => ({ ...p, email: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && addBrand()}
@@ -113,7 +115,7 @@ export default function BrandsPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button className="btn-primary" onClick={addBrand} disabled={saving}>
-              <Save size={15} /> {saving ? 'Zapisywanie...' : 'Dodaj'}
+              <Save size={15} /> {saving ? t('brands.saving') : t('brands.add')}
             </button>
           </div>
         </div>
@@ -123,18 +125,18 @@ export default function BrandsPage() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Users size={17} color="var(--accent)" /> Lista kontaktów
+            <Users size={17} color="var(--accent)" /> {t('brands.list')}
           </h2>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 20, border: '1px solid var(--border)' }}>
-            {brands.length} rekordów
+            {brands.length} {t('brands.records')}
           </span>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Ładowanie...</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>{t('brands.loading')}</div>
         ) : brands.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-            Brak kontaktów. Dodaj pierwszy!
+            {t('brands.empty')}
           </div>
         ) : (
           <div className="table-container">
@@ -142,9 +144,9 @@ export default function BrandsPage() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Nazwa</th>
-                  <th>Email</th>
-                  <th>Akcje</th>
+                  <th>{t('brands.name_col')}</th>
+                  <th>{t('brands.email_col')}</th>
+                  <th>{t('brands.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,7 +161,7 @@ export default function BrandsPage() {
                     </td>
                     <td>
                       <button className="btn-danger" onClick={() => deleteBrand(i)}>
-                        <Trash2 size={13} /> Usuń
+                        <Trash2 size={13} /> {t('brands.delete')}
                       </button>
                     </td>
                   </tr>

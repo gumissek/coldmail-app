@@ -1,6 +1,6 @@
 # 📧 ColdMail
 
-A local cold email tool with contact management, SMTP account rotation, file attachments, **scheduled sending with natural 1-3h delays**, and AI-powered email improvement via OpenAI.
+A local cold email tool with contact management, SMTP account rotation, file attachments, **scheduled sending with natural 1-3h delays**, AI-powered email improvement via OpenAI, **dark/light mode**, and **PL/ENG language switching**.
 
 ---
 
@@ -28,7 +28,8 @@ A local cold email tool with contact management, SMTP account rotation, file att
 9. [OpenAI key (for AI email improvement)](#9-openai-key-for-ai-email-improvement)
 10. [General app usage](#10-general-app-usage)
 11. [Scheduled email sending](#11-scheduled-email-sending)
-12. [Shutting down the app](#12-shutting-down-the-app)
+12. [Dark/Light mode and language](#12-darklight-mode-and-language)
+13. [Shutting down the app](#13-shutting-down-the-app)
 
 ---
 
@@ -316,13 +317,13 @@ OPENAI_API_KEY=sk-proj-yourkey
 
 After opening `http://localhost:3000` you'll see a left-side menu. Click on each section:
 
-| Section | What it does |
+| Section (PL / EN) | What it does |
 |---------|-------------|
-| **Wyślij mail** | Write and send a new email |
-| **Zaplanowane** | View and manage scheduled emails |
-| **Lista kontaktów** | Manage your contact list |
-| **Linki** | Manage website links |
-| **Historia** | History of sent emails |
+| **Wyślij mail** / **Send Mail** | Write and send a new email |
+| **Zaplanowane** / **Scheduled** | View and manage scheduled emails |
+| **Lista kontaktów** / **Contacts** | Manage your contact list |
+| **Linki** / **Links** | Manage website links |
+| **Historia** / **History** | History of sent emails |
 
 ---
 
@@ -381,7 +382,23 @@ id,to,from_account,subject,html,scheduled_date,status,created_at,next_send_after
 
 ---
 
-## 12. Shutting down the app
+## 12. Dark/Light mode and language
+
+The app supports **dark and light mode** as well as **Polish (PL) and English (ENG)** interface language.
+
+### How to switch:
+
+1. Look at the **top of the left sidebar**, below the ColdMail logo
+2. You'll see two small buttons:
+   - **☀ Jasny / 🌙 Ciemny** – click to switch between light and dark mode
+   - **🌐 ENG / PL** – click to switch the interface language
+3. Your choice is **saved automatically** – it will be remembered next time you open the app
+
+> 💡 **Tip:** All text in the app (buttons, labels, messages, errors) changes when you switch the language.
+
+---
+
+## 13. Shutting down the app
 
 When you are done working:
 
@@ -451,8 +468,9 @@ coldmail-app/
 │   └── sent_mails.csv             # Append-only email log
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx             # Root layout (Sidebar + ScheduledEmailProcessor)
-│   │   ├── page.tsx               # Root redirect → /compose
+│   │   ├── globals.css            # Global styles with dark & light theme CSS variables
+│   │   ├── layout.tsx             # Root layout (Sidebar + ThemeLanguageProvider)
+│   │   ├── page.tsx               # Dashboard page
 │   │   ├── compose/page.tsx       # Main compose UI + schedule button
 │   │   ├── scheduled/page.tsx     # Scheduled email management page
 │   │   ├── brands/page.tsx        # Brand/contact management
@@ -470,9 +488,12 @@ coldmail-app/
 │   │       ├── brands/            # GET/POST/DELETE brands
 │   │       ├── links/             # GET/POST/DELETE links
 │   │       └── logs/              # GET email send logs
-│   └── components/
-│       ├── Sidebar.tsx                  # Navigation sidebar
-│       └── ScheduledEmailProcessor.tsx  # Startup check for due emails
+│   ├── components/
+│   │   ├── Sidebar.tsx                  # Navigation sidebar + theme/lang toggles
+│   │   ├── ThemeLanguageProvider.tsx     # Context provider for dark/light & PL/EN
+│   │   └── ScheduledEmailProcessor.tsx  # Startup check for due emails
+│   └── lib/
+│       └── translations.ts              # PL/EN translation dictionary
 └── .env.local                     # Environment variables (gitignored)
 ```
 
@@ -712,8 +733,11 @@ For Gmail, users must generate an [App Password](https://support.google.com/acco
 ## Client-side Notes
 
 - Selected SMTP account is persisted in `localStorage` under the key `selectedAccount`.
-- The compose page (`src/app/compose/page.tsx`) is the main `'use client'` component.
-- All other pages use client components with fetch calls to the API routes.
+- Theme preference is persisted in `localStorage` under `coldmail-theme` (`'dark'` or `'light'`).
+- Language preference is persisted in `localStorage` under `coldmail-lang` (`'pl'` or `'en'`).
+- The `ThemeLanguageProvider` wraps the entire app and provides `useSettings()` hook with `theme`, `lang`, `toggleTheme()`, `setLang()`, and `t(key)` for translations.
+- All pages are `'use client'` components that use `t()` for all UI strings.
+- Light mode is achieved via a `[data-theme="light"]` CSS variable override on `<html>`.
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mail, RefreshCw } from 'lucide-react';
+import { useSettings } from '@/components/ThemeLanguageProvider';
 
 interface Log {
   id: string;
@@ -15,6 +16,7 @@ interface Log {
 }
 
 export default function LogsPage() {
+  const { t, lang } = useSettings();
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,7 @@ export default function LogsPage() {
 
   const formatDate = (iso: string) => {
     try {
-      return new Date(iso).toLocaleString('pl-PL', {
+      return new Date(iso).toLocaleString(lang === 'pl' ? 'pl-PL' : 'en-US', {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
       });
@@ -45,29 +47,29 @@ export default function LogsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }} className="glow-text">
-            Historia wysyłek
+            {t('logs.title')}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-            Logi wszystkich wysłanych wiadomości.
+            {t('logs.subtitle')}
           </p>
         </div>
         <button className="btn-secondary" onClick={load}>
-          <RefreshCw size={14} /> Odśwież
+          <RefreshCw size={14} /> {t('logs.refresh')}
         </button>
       </div>
 
       {/* Mini stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
         <div className="stat-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Wszystkich</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('logs.total')}</div>
           <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>{logs.length}</div>
         </div>
         <div className="stat-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Wysłanych</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('logs.sent')}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)', marginTop: 4 }}>{sentCount}</div>
         </div>
         <div className="stat-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Błędów</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('logs.errors')}</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: failedCount > 0 ? 'var(--error)' : 'var(--text-primary)', marginTop: 4 }}>{failedCount}</div>
         </div>
       </div>
@@ -75,28 +77,28 @@ export default function LogsPage() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Mail size={17} color="var(--accent)" /> Dziennik maili
+            <Mail size={17} color="var(--accent)" /> {t('logs.journal')}
           </h2>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Ładowanie...</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>{t('logs.loading')}</div>
         ) : logs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Brak historii. Wyślij pierwszego maila!</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('logs.empty')}</div>
           </div>
         ) : (
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>Do</th>
-                  <th>Od</th>
-                  <th>Temat</th>
-                  <th>Data wysyłki</th>
-                  <th>Szczegóły</th>
+                  <th>{t('logs.status')}</th>
+                  <th>{t('logs.to')}</th>
+                  <th>{t('logs.from')}</th>
+                  <th>{t('logs.subject')}</th>
+                  <th>{t('logs.send_date')}</th>
+                  <th>{t('logs.details')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,7 +106,7 @@ export default function LogsPage() {
                   <tr key={i}>
                     <td>
                       <span className={`badge ${log.status === 'sent' ? 'badge-success' : 'badge-error'}`}>
-                        {log.status === 'sent' ? '✓ Ok' : '✗ Błąd'}
+                        {log.status === 'sent' ? t('logs.ok') : t('logs.error')}
                       </span>
                     </td>
                     <td style={{ fontWeight: 500 }}>{log.to}</td>

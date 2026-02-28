@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Send, Users, Link2, Eye, EyeOff, Sparkles, ChevronDown, ChevronUp, Check, Loader2, CheckSquare, Square, Paperclip, X, FileText, Trash2, Clock, CalendarClock } from 'lucide-react';
+import { useSettings } from '@/components/ThemeLanguageProvider';
 
 interface Brand {
   name: string;
@@ -29,6 +30,9 @@ function formatBytes(bytes: number): string {
 }
 
 export default function ComposePage() {
+  const { t, lang } = useSettings();
+  const locale = lang === 'pl' ? 'pl-PL' : 'en-US';
+
   const [brands, setBrands] = useState<Brand[]>([]);
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [form, setForm] = useState({
@@ -112,7 +116,7 @@ export default function ComposePage() {
     const incoming = Array.from(files);
     const newTotal = totalAttachmentSize + incoming.reduce((s, f) => s + f.size, 0);
     if (newTotal > MAX_TOTAL_SIZE) {
-      showToast(`Przekroczono limit 15 MB! (aktualne: ${formatBytes(newTotal)})`, 'error');
+      showToast(t('compose.size_exceeded').replace('{size}', formatBytes(newTotal)), 'error');
       return;
     }
     // Avoid duplicates by name+size
@@ -142,7 +146,7 @@ export default function ComposePage() {
 
   const improveEmail = async () => {
     if (!form.html.trim()) {
-      setImproveError('Najpierw wpisz treść emaila!');
+      setImproveError(t('compose.ai_empty_error'));
       return;
     }
     setImproveError('');
@@ -161,7 +165,7 @@ export default function ComposePage() {
         setImproveError(data.error || 'Błąd OpenAI');
       }
     } catch {
-      setImproveError('Błąd połączenia z serwerem');
+      setImproveError(t('compose.server_error'));
     }
     setImproving(false);
   };
@@ -170,7 +174,7 @@ export default function ComposePage() {
     setForm(p => ({ ...p, html: improvedContent }));
     setImprovedContent('');
     setImproverOpen(false);
-    showToast('✓ Poprawiona treść zastosowana!');
+    showToast(t('compose.ai_applied'));
   };
 
   // ── Clear form ────────────────────────────────────────────────────────────────
@@ -199,11 +203,11 @@ export default function ComposePage() {
   /** Open modal: pre-load the currently selected localStorage account */
   const openSendModal = (isSchedule = false) => {
     if (!form.to || !form.subject || !form.html) {
-      showToast('Uzupełnij wszystkie pola!', 'error');
+      showToast(t('compose.fill_all'), 'error');
       return;
     }
     if (toError) {
-      showToast('Popraw nieprawidłowe adresy email!', 'error');
+      showToast(t('compose.fix_emails'), 'error');
       return;
     }
     let current: Account | null = null;
@@ -264,14 +268,14 @@ export default function ComposePage() {
 
     if (failCount === 0) {
       showToast(recipients.length > 1
-        ? `✓ Wysłano do ${successCount} odbiorców!`
-        : `✓ Mail wysłany do ${recipients[0]}!`
+        ? t('compose.sent_to_many').replace('{count}', String(successCount))
+        : t('compose.sent_to_one').replace('{email}', recipients[0])
       );
       clearForm();
     } else if (successCount > 0) {
-      showToast(`Wysłano: ${successCount}, błędy: ${failCount}`, 'error');
+      showToast(t('compose.sent_partial').replace('{success}', String(successCount)).replace('{fail}', String(failCount)), 'error');
     } else {
-      showToast('Błąd wysyłania maili', 'error');
+      showToast(t('compose.send_error'), 'error');
     }
 
     setSending(false);
@@ -280,15 +284,15 @@ export default function ComposePage() {
   /** Schedule emails for future sending */
   const scheduleEmail = async () => {
     if (!scheduledDate) {
-      showToast('Wybierz datę i godzinę wysyłki!', 'error');
+      showToast(t('compose.select_date'), 'error');
       return;
     }
     if (new Date(scheduledDate) <= new Date()) {
-      showToast('Data musi być w przyszłości!', 'error');
+      showToast(t('compose.date_future'), 'error');
       return;
     }
     if (!modalAccount) {
-      showToast('Wybierz konto nadawcy!', 'error');
+      showToast(t('compose.select_sender'), 'error');
       return;
     }
     setConfirmModalOpen(false);
@@ -308,14 +312,14 @@ export default function ComposePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        showToast(`✓ Zaplanowano wysyłkę ${data.count} mail(i) na ${new Date(scheduledDate).toLocaleString('pl-PL')}`);
+        showToast(t('compose.scheduled_ok').replace('{count}', data.count).replace('{date}', new Date(scheduledDate).toLocaleString(locale)));
         clearForm();
         setScheduledDate('');
       } else {
-        showToast(data.error || 'Błąd planowania', 'error');
+        showToast(data.error || t('compose.schedule_error'), 'error');
       }
     } catch {
-      showToast('Błąd połączenia z serwerem', 'error');
+      showToast(t('compose.server_error'), 'error');
     }
 
     setSending(false);
@@ -325,10 +329,10 @@ export default function ComposePage() {
     <div>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }} className="glow-text">
-          Send Mail
+          {t('compose.title')}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-          Napisz i wyślij cold maila przez SMTP.
+          {t('compose.subtitle')}
         </p>
       </div>
 
@@ -338,11 +342,11 @@ export default function ComposePage() {
           <div className="card">
             {/* To */}
             <div style={{ marginBottom: 14 }}>
-              <label className="label">Do (adres email odbiorcy)</label>
+              <label className="label">{t('compose.to_label')}</label>
               <input
                 className="input"
                 type="text"
-                placeholder="odbiorca@firma.pl lub kilka po przecinku"
+                placeholder={t('compose.to_placeholder')}
                 value={form.to}
                 style={toError ? { borderColor: 'var(--error)' } : undefined}
                 onChange={e => {
@@ -353,7 +357,7 @@ export default function ComposePage() {
                   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                   const parts = val.split(',').map(s => s.trim()).filter(Boolean);
                   const invalid = parts.filter(p => !emailRegex.test(p));
-                  setToError(invalid.length > 0 ? `Nieprawidłowe adresy: ${invalid.join(', ')}` : '');
+                  setToError(invalid.length > 0 ? `${t('compose.invalid_emails')}: ${invalid.join(', ')}` : '');
                 }}
               />
               {toError && (
@@ -361,17 +365,17 @@ export default function ComposePage() {
               )}
               {!toError && selectedBrands.length > 1 && (
                 <div style={{ marginTop: 5, fontSize: 11, color: 'var(--accent)' }}>
-                  Zaznaczono {selectedBrands.length} odbiorców — wyślę osobne maile do każdego
+                  {t('compose.selected_recipients').replace('{count}', String(selectedBrands.length))}
                 </div>
               )}
             </div>
 
             {/* Subject */}
             <div style={{ marginBottom: 14 }}>
-              <label className="label">Temat</label>
+              <label className="label">{t('compose.subject')}</label>
               <input
                 className="input"
-                placeholder="Temat wiadomości..."
+                placeholder={t('compose.subject_placeholder')}
                 value={form.subject}
                 onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
               />
@@ -380,7 +384,7 @@ export default function ComposePage() {
             {/* Body */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label className="label" style={{ margin: 0 }}>Treść (HTML)</label>
+                <label className="label" style={{ margin: 0 }}>{t('compose.body_label')}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     className="btn-secondary"
@@ -388,7 +392,7 @@ export default function ComposePage() {
                     onClick={() => setImproverOpen(p => !p)}
                   >
                     <Sparkles size={13} />
-                    Popraw AI
+                    {t('compose.ai_improve')}
                     {improverOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </button>
                   <button
@@ -396,7 +400,7 @@ export default function ComposePage() {
                     style={{ padding: '6px 12px', fontSize: 12 }}
                     onClick={() => setPreview(p => !p)}
                   >
-                    {preview ? <><EyeOff size={13} /> Edytuj</> : <><Eye size={13} /> Podgląd</>}
+                    {preview ? <><EyeOff size={13} /> {t('compose.edit')}</> : <><Eye size={13} /> {t('compose.preview')}</>}
                   </button>
                 </div>
               </div>
@@ -411,15 +415,15 @@ export default function ComposePage() {
                   marginBottom: 12,
                 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Sparkles size={14} /> Poprawianie treści przez AI
+                    <Sparkles size={14} /> {t('compose.ai_title')}
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <label className="label" style={{ fontSize: 12 }}>Wytyczne dotyczące wyglądu emaila</label>
+                    <label className="label" style={{ fontSize: 12 }}>{t('compose.ai_instructions')}</label>
                     <textarea
                       className="input textarea"
                       style={{ minHeight: 80, fontSize: 13, resize: 'vertical' }}
-                      placeholder="Np. Formalny ton, zwięzłe akapity, bez tagów HTML, profesjonalne zakończenie..."
+                      placeholder={t('compose.ai_placeholder')}
                       value={instructions}
                       onChange={e => setInstructions(e.target.value)}
                     />
@@ -431,7 +435,7 @@ export default function ComposePage() {
                     onClick={improveEmail}
                     disabled={improving}
                   >
-                    {improving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Poprawiam...</> : <><Sparkles size={14} /> Popraw</>}
+                    {improving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> {t('compose.ai_improving')}</> : <><Sparkles size={14} /> {t('compose.ai_improve_btn')}</>}
                   </button>
 
                   {improveError && (
@@ -440,7 +444,7 @@ export default function ComposePage() {
 
                   {improvedContent && (
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Wynik poprawy:</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>{t('compose.ai_result')}</div>
                       <div style={{
                         border: '1px solid var(--border)',
                         borderRadius: 8,
@@ -460,7 +464,7 @@ export default function ComposePage() {
                         style={{ marginTop: 8, padding: '8px 16px', fontSize: 13, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 6 }}
                         onClick={applyImproved}
                       >
-                        <Check size={14} /> Zastosuj
+                        <Check size={14} /> {t('compose.ai_apply')}
                       </button>
                     </div>
                   )}
@@ -481,7 +485,7 @@ export default function ComposePage() {
                 <textarea
                   className="input textarea"
                   style={{ minHeight: 200, fontFamily: 'monospace', fontSize: 13 }}
-                  placeholder="<p>Cześć {{name}},</p><p>Piszę do Ciebie w sprawie...</p>"
+                  placeholder={t('compose.body_placeholder')}
                   value={form.html}
                   onChange={e => setForm(p => ({ ...p, html: e.target.value }))}
                 />
@@ -493,7 +497,7 @@ export default function ComposePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label className="label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Paperclip size={13} color="var(--accent)" />
-                  Załączniki
+                  {t('compose.attachments')}
                 </label>
                 <span style={{ fontSize: 11, color: totalAttachmentSize > MAX_TOTAL_SIZE * 0.9 ? 'var(--error)' : 'var(--text-muted)' }}>
                   {formatBytes(totalAttachmentSize)} / 15 MB
@@ -519,11 +523,11 @@ export default function ComposePage() {
               >
                 <Paperclip size={20} color={dragOver ? 'var(--accent)' : 'var(--text-muted)'} style={{ marginBottom: 6 }} />
                 <div style={{ fontSize: 13, color: dragOver ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 500 }}>
-                  Przeciągnij pliki tutaj lub{' '}
-                  <span style={{ color: 'var(--accent)', textDecoration: 'underline' }}>kliknij, aby wybrać</span>
+                  {t('compose.drag_drop')}{' '}
+                  <span style={{ color: 'var(--accent)', textDecoration: 'underline' }}>{t('compose.click_to_select')}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Maks. łączny rozmiar: 15 MB
+                  {t('compose.max_size')}
                 </div>
               </div>
 
@@ -573,7 +577,7 @@ export default function ComposePage() {
                           borderRadius: 4,
                           transition: 'color 0.15s',
                         }}
-                        title="Usuń załącznik"
+                        title={t('compose.remove_attachment')}
                         onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
                         onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                       >
@@ -591,9 +595,9 @@ export default function ComposePage() {
                 className="btn-secondary"
                 onClick={clearForm}
                 style={{ padding: '10px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--error)', borderColor: 'rgba(239,68,68,0.35)' }}
-                title="Wyczyść cały formularz"
+                title={t('compose.clear_form')}
               >
-                <Trash2 size={14} /> Wyczyść formularz
+                <Trash2 size={14} /> {t('compose.clear_form')}
               </button>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
@@ -602,10 +606,10 @@ export default function ComposePage() {
                   disabled={sending}
                   style={{ padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 7, borderColor: 'rgba(108,99,255,0.4)', color: 'var(--accent)' }}
                 >
-                  <CalendarClock size={15} /> Zaplanuj wysyłkę
+                  <CalendarClock size={15} /> {t('compose.schedule_send')}
                 </button>
                 <button className="btn-primary" onClick={() => openSendModal(false)} disabled={sending} style={{ padding: '12px 28px', fontSize: 15 }}>
-                  <Send size={16} /> {sending ? 'Wysyłanie...' : selectedBrands.length > 1 ? `Wyślij do ${selectedBrands.length} osób` : 'Wyślij mail'}
+                  <Send size={16} /> {sending ? t('compose.sending') : selectedBrands.length > 1 ? t('compose.send_to_many').replace('{count}', String(selectedBrands.length)) : t('compose.send_mail')}
                 </button>
               </div>
             </div>
@@ -618,7 +622,7 @@ export default function ComposePage() {
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Users size={14} color="var(--accent)" /> Wybierz kontakt
+                <Users size={14} color="var(--accent)" /> {t('compose.select_contact')}
               </h3>
               {brands.length > 0 && (
                 <button
@@ -633,13 +637,13 @@ export default function ComposePage() {
                   }}
                 >
                   {allSelected
-                    ? <><CheckSquare size={10} /> Odznacz</>
-                    : <><Square size={10} />Wszyscy</>}
+                    ? <><CheckSquare size={10} /> {t('compose.deselect')}</>
+                    : <><Square size={10} />{t('compose.select_all')}</>}
                 </button>
               )}
             </div>
             {brands.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Brak kontaktów</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('compose.no_contacts')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {brands.map((b, i) => {
@@ -678,7 +682,7 @@ export default function ComposePage() {
                 marginTop: 8, fontSize: 11,
                 color: 'var(--accent)', fontWeight: 600,
               }}>
-                Zaznaczono: {selectedBrands.length} z {brands.length}
+                {t('compose.selected_count').replace('{selected}', String(selectedBrands.length)).replace('{total}', String(brands.length))}
               </div>
             )}
           </div>
@@ -686,10 +690,10 @@ export default function ComposePage() {
           {/* Links */}
           <div className="card" style={{ padding: 16 }}>
             <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link2 size={14} color="var(--accent)" /> Wstaw link
+              <Link2 size={14} color="var(--accent)" /> {t('compose.insert_link')}
             </h3>
             {links.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Brak linków</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('compose.no_links')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {links.map((l, i) => (
@@ -702,7 +706,7 @@ export default function ComposePage() {
                       background: 'var(--bg-secondary)',
                       transition: 'all 0.15s',
                     }}
-                    title={`Kliknij, żeby wstawić: ${l.url}`}
+                    title={`${t('compose.click_to_insert')}: ${l.url}`}
                   >
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{l['website name']}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.url}</div>
@@ -750,17 +754,17 @@ export default function ComposePage() {
           >
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
               {scheduleMode ? <CalendarClock size={16} color="var(--accent)" /> : <Send size={16} color="var(--accent)" />}
-              {scheduleMode ? 'Zaplanuj wysyłkę' : 'Potwierdź wysyłkę'}
+              {scheduleMode ? t('compose.confirm_schedule') : t('compose.confirm_send')}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
-              {scheduleMode ? 'Wybierz datę, godzinę i konto nadawcy.' : 'Z jakiego konta e-mail chcesz wysłać tę wiadomość?'}
+              {scheduleMode ? t('compose.confirm_schedule_desc') : t('compose.confirm_send_desc')}
             </p>
 
             {/* Account selector */}
             <div style={{ marginBottom: 18 }}>
-              <label className="label" style={{ fontSize: 12, marginBottom: 6 }}>Konto nadawcy</label>
+              <label className="label" style={{ fontSize: 12, marginBottom: 6 }}>{t('compose.sender_account')}</label>
               {accounts.length === 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Brak kont - dodaj konto w sidebarze albo w pliku accounts.csv</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('compose.no_accounts')}</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {accounts.map((acc, i) => (
@@ -792,7 +796,7 @@ export default function ComposePage() {
             {scheduleMode && (
               <div style={{ marginBottom: 18 }}>
                 <label className="label" style={{ fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Clock size={13} color="var(--accent)" /> Data i godzina wysyłki
+                  <Clock size={13} color="var(--accent)" /> {t('compose.schedule_date')}
                 </label>
                 <input
                   type="datetime-local"
@@ -804,7 +808,7 @@ export default function ComposePage() {
                 />
                 {scheduledDate && (
                   <div style={{ marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>
-                    Maile zostaną wysłane po {new Date(scheduledDate).toLocaleString('pl-PL')} w losowych odstępach 1-3h
+                    {t('compose.schedule_info').replace('{date}', new Date(scheduledDate).toLocaleString(locale))}
                   </div>
                 )}
               </div>
@@ -816,9 +820,9 @@ export default function ComposePage() {
               background: 'var(--bg-secondary)', border: '1px solid var(--border)',
               fontSize: 12, color: 'var(--text-secondary)', marginBottom: 20,
             }}>
-              <strong>Do:</strong> {form.to || '—'}<br />
-              <strong>Temat:</strong> {form.subject || '—'}<br />
-              {attachments.length > 0 && <><strong>Załączniki:</strong> {attachments.length} plik(ów)</>}
+              <strong>{t('compose.to')}</strong> {form.to || '—'}<br />
+              <strong>{t('compose.subject_label')}</strong> {form.subject || '—'}<br />
+              {attachments.length > 0 && <><strong>{t('compose.attachments_label')}</strong> {t('compose.files_count').replace('{count}', String(attachments.length))}</>}
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -827,7 +831,7 @@ export default function ComposePage() {
                 style={{ padding: '10px 20px', fontSize: 13 }}
                 onClick={() => setConfirmModalOpen(false)}
               >
-                Anuluj
+                {t('compose.cancel')}
               </button>
               {scheduleMode ? (
                 <button
@@ -835,7 +839,7 @@ export default function ComposePage() {
                   style={{ padding: '10px 22px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, background: 'linear-gradient(135deg, var(--accent), #8b5cf6)' }}
                   onClick={scheduleEmail}
                 >
-                  <CalendarClock size={14} /> Zaplanuj
+                  <CalendarClock size={14} /> {t('compose.schedule_btn')}
                 </button>
               ) : (
                 <button
@@ -843,7 +847,7 @@ export default function ComposePage() {
                   style={{ padding: '10px 22px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
                   onClick={sendEmail}
                 >
-                  <Send size={14} /> Wyślij
+                  <Send size={14} /> {t('compose.send_btn')}
                 </button>
               )}
             </div>

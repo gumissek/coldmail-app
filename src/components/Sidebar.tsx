@@ -5,18 +5,10 @@ import { usePathname } from 'next/navigation';
 import {
   Mail, Users, Link2, Send, BarChart2, Zap, ChevronDown,
   Plus, Trash2, Wifi, WifiOff, X, Loader2, CheckCircle, AlertCircle,
-  CalendarClock,
+  CalendarClock, Sun, Moon, Globe,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: BarChart2 },
-  { href: '/compose', label: 'Wyślij mail', icon: Send },
-  { href: '/scheduled', label: 'Zaplanowane', icon: CalendarClock },
-  { href: '/brands', label: 'Lista kontaktów', icon: Users },
-  { href: '/links', label: 'Linki', icon: Link2 },
-  { href: '/logs', label: 'Historia', icon: Mail },
-];
+import { useSettings } from '@/components/ThemeLanguageProvider';
 
 interface Account {
   smtp_server: string;
@@ -28,8 +20,19 @@ const STORAGE_KEY = 'selectedAccount';
 
 const emptyForm = { smtp_server: '', smtp_port: '587', smtp_username: '', smtp_password: '' };
 
+const navKeys = [
+  { href: '/', labelKey: 'nav.dashboard', icon: BarChart2 },
+  { href: '/compose', labelKey: 'nav.compose', icon: Send },
+  { href: '/scheduled', labelKey: 'nav.scheduled', icon: CalendarClock },
+  { href: '/brands', labelKey: 'nav.brands', icon: Users },
+  { href: '/links', labelKey: 'nav.links', icon: Link2 },
+  { href: '/logs', labelKey: 'nav.logs', icon: Mail },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const { theme, toggleTheme, lang, setLang, t } = useSettings();
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedUsername, setSelectedUsername] = useState<string>('');
 
@@ -75,7 +78,7 @@ export default function Sidebar() {
 
   const handleAddAccount = async () => {
     if (!addForm.smtp_server || !addForm.smtp_port || !addForm.smtp_username || !addForm.smtp_password) {
-      setAddError('Uzupełnij wszystkie pola');
+      setAddError(t('sidebar.fill_all'));
       return;
     }
     setAddLoading(true);
@@ -92,16 +95,16 @@ export default function Sidebar() {
         setShowAddForm(false);
         loadAccounts();
       } else {
-        setAddError(data.error || 'Błąd zapisu');
+        setAddError(data.error || t('sidebar.save_error'));
       }
     } catch {
-      setAddError('Błąd połączenia z serwerem');
+      setAddError(t('sidebar.connection_error'));
     }
     setAddLoading(false);
   };
 
   const handleDeleteAccount = async (username: string) => {
-    if (!confirm(`Usunąć konto "${username}"?`)) return;
+    if (!confirm(`${t('sidebar.delete_confirm')} "${username}"?`)) return;
     try {
       await fetch('/api/accounts', {
         method: 'DELETE',
@@ -117,9 +120,6 @@ export default function Sidebar() {
   };
 
   const handleTestAccount = async (account: Account) => {
-    // We need smtp_password too — but API exposes only public fields.
-    // Ask user to enter password just for the test, or use stored localStorage creds.
-    // For simplicity: test-specific endpoint reads stored password from server (accounts.csv).
     setTestStatus((prev) => ({ ...prev, [account.smtp_username]: 'testing' }));
     try {
       const res = await fetch('/api/accounts/test-existing', {
@@ -130,10 +130,10 @@ export default function Sidebar() {
       const data = await res.json();
       setTestStatus((prev) => ({
         ...prev,
-        [account.smtp_username]: data.ok ? 'ok' : `error:${data.error || 'Błąd SMTP'}`,
+        [account.smtp_username]: data.ok ? 'ok' : `error:${data.error || t('sidebar.test_error_smtp')}`,
       }));
     } catch {
-      setTestStatus((prev) => ({ ...prev, [account.smtp_username]: 'error:Błąd połączenia' }));
+      setTestStatus((prev) => ({ ...prev, [account.smtp_username]: `error:${t('sidebar.test_error_connection')}` }));
     }
   };
 
@@ -147,6 +147,21 @@ export default function Sidebar() {
     padding: '6px 9px',
     outline: 'none',
     boxSizing: 'border-box',
+  };
+
+  const toggleBtnStyle: React.CSSProperties = {
+    background: 'rgba(108,99,255,0.1)',
+    border: '1px solid rgba(108,99,255,0.25)',
+    borderRadius: 8,
+    padding: '5px 8px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--accent)',
+    transition: 'all 0.2s',
   };
 
   return (
@@ -166,21 +181,37 @@ export default function Sidebar() {
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>ColdMail Sender v.1.0</div>
           </div>
         </div>
+
+        {/* Theme & Language toggles */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+          <button onClick={toggleTheme} style={toggleBtnStyle} title={theme === 'dark' ? t('theme.light') : t('theme.dark')}>
+            {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+            {theme === 'dark' ? t('theme.light') : t('theme.dark')}
+          </button>
+          <button
+            onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}
+            style={toggleBtnStyle}
+            title={lang === 'pl' ? 'English' : 'Polski'}
+          >
+            <Globe size={13} />
+            {lang === 'pl' ? 'ENG' : 'PL'}
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
       <div style={{ flex: 1, paddingTop: 12 }}>
         <div style={{ padding: '0 8px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', paddingLeft: 24 }}>
-          Menu
+          {t('sidebar.menu')}
         </div>
-        {navItems.map(({ href, label, icon: Icon }) => (
+        {navKeys.map(({ href, labelKey, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={`sidebar-link ${pathname === href ? 'active' : ''}`}
           >
             <Icon size={17} />
-            {label}
+            {t(labelKey)}
           </Link>
         ))}
       </div>
@@ -193,7 +224,7 @@ export default function Sidebar() {
           marginBottom: 8,
         }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-            Konta SMTP
+            {t('sidebar.smtp_accounts')}
           </div>
           <button
             onClick={() => { setShowAddForm((p) => !p); setAddError(''); }}
@@ -204,10 +235,10 @@ export default function Sidebar() {
               color: 'var(--accent)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600,
             }}
-            title={showAddForm ? 'Zamknij' : 'Dodaj konto'}
+            title={showAddForm ? t('sidebar.close') : t('sidebar.add_account')}
           >
             {showAddForm ? <X size={11} /> : <Plus size={11} />}
-            {showAddForm ? 'Anuluj' : 'Dodaj'}
+            {showAddForm ? t('sidebar.cancel') : t('sidebar.add')}
           </button>
         </div>
 
@@ -247,7 +278,7 @@ export default function Sidebar() {
                         color: 'var(--text-muted)', padding: 2, borderRadius: 4,
                         display: 'flex', alignItems: 'center',
                       }}
-                      title="Usuń konto"
+                      title={t('sidebar.delete_account')}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -287,10 +318,10 @@ export default function Sidebar() {
                     {ts === 'ok' && <CheckCircle size={10} />}
                     {ts?.startsWith('error') && <AlertCircle size={10} />}
                     {!ts && <Wifi size={10} />}
-                    {ts === 'testing' ? 'Testowanie...'
-                      : ts === 'ok' ? 'Połączono ✓'
+                    {ts === 'testing' ? t('sidebar.testing')
+                      : ts === 'ok' ? t('sidebar.connected')
                         : ts?.startsWith('error') ? ts.replace('error:', '')
-                          : 'Testuj połączenie'}
+                          : t('sidebar.test_connection')}
                   </button>
                 </div>
               );
@@ -300,7 +331,7 @@ export default function Sidebar() {
 
         {accounts.length === 0 && !showAddForm && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
-            Brak kont SMTP. Dodaj pierwsze konto.
+            {t('sidebar.no_accounts')}
           </div>
         )}
 
@@ -313,13 +344,13 @@ export default function Sidebar() {
             display: 'flex', flexDirection: 'column', gap: 7,
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 2 }}>
-              Nowe konto SMTP
+              {t('sidebar.new_smtp')}
             </div>
             {[
-              { label: 'Serwer SMTP', key: 'smtp_server', placeholder: 'smtp.gmail.com' },
-              { label: 'Port', key: 'smtp_port', placeholder: '587' },
-              { label: 'Użytkownik', key: 'smtp_username', placeholder: 'user@example.com' },
-              { label: 'Hasło', key: 'smtp_password', placeholder: '••••••••', type: 'password' },
+              { label: t('sidebar.smtp_server'), key: 'smtp_server', placeholder: 'smtp.gmail.com' },
+              { label: t('sidebar.port'), key: 'smtp_port', placeholder: '587' },
+              { label: t('sidebar.username'), key: 'smtp_username', placeholder: 'user@example.com' },
+              { label: t('sidebar.password'), key: 'smtp_password', placeholder: '••••••••', type: 'password' },
             ].map(({ label, key, placeholder, type }) => (
               <div key={key}>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{label}</div>
@@ -346,8 +377,8 @@ export default function Sidebar() {
               }}
             >
               {addLoading
-                ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Zapisywanie...</>
-                : <><Plus size={12} /> Zapisz konto</>}
+                ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> {t('sidebar.saving')}</>
+                : <><Plus size={12} /> {t('sidebar.save_account')}</>}
             </button>
           </div>
         )}
@@ -363,7 +394,7 @@ export default function Sidebar() {
           }}>
             <div className="pulse-dot" />
             <div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--success)' }}>SMTP Active</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--success)' }}>{t('sidebar.smtp_active')}</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{selectedUsername}</div>
             </div>
           </div>
