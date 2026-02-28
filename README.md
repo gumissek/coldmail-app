@@ -1,6 +1,6 @@
 # 📧 ColdMail
 
-A local cold email tool with contact management, SMTP account rotation, file attachments, and AI-powered email improvement via OpenAI.
+A local cold email tool with contact management, SMTP account rotation, file attachments, **scheduled sending with natural 1-3h delays**, and AI-powered email improvement via OpenAI.
 
 ---
 
@@ -27,7 +27,8 @@ A local cold email tool with contact management, SMTP account rotation, file att
 8. [SMTP accounts (sending mailboxes)](#8-smtp-accounts-sending-mailboxes)
 9. [OpenAI key (for AI email improvement)](#9-openai-key-for-ai-email-improvement)
 10. [General app usage](#10-general-app-usage)
-11. [Shutting down the app](#11-shutting-down-the-app)
+11. [Scheduled email sending](#11-scheduled-email-sending)
+12. [Shutting down the app](#12-shutting-down-the-app)
 
 ---
 
@@ -318,6 +319,7 @@ After opening `http://localhost:3000` you'll see a left-side menu. Click on each
 | Section | What it does |
 |---------|-------------|
 | **Wyślij mail** | Write and send a new email |
+| **Zaplanowane** | View and manage scheduled emails |
 | **Lista kontaktów** | Manage your contact list |
 | **Linki** | Manage website links |
 | **Historia** | History of sent emails |
@@ -332,8 +334,9 @@ After opening `http://localhost:3000` you'll see a left-side menu. Click on each
 4. Write the **email body**
 5. (Optional) Add attachments by dragging files onto the field or clicking "Add attachment" (max 15 MB total)
 6. (Optional) Click the **"Improve"** button to let AI polish the content
-7. Click **"Send"** – a confirmation dialog will appear
+7. Click **"Wyślij mail"** to send immediately, or **"Zaplanuj wysyłkę"** to schedule for later
 8. Select the **account** you want to send from
+9. (If scheduling) Choose the **date and time** for sending
 9. Confirm the send
 
 ---
@@ -346,7 +349,39 @@ After opening `http://localhost:3000` you'll see a left-side menu. Click on each
 
 ---
 
-## 11. Shutting down the app
+## 11. Scheduled email sending
+
+You can schedule emails to be sent automatically at a future date and time.
+
+### How to schedule an email:
+
+1. Click **"Wyślij mail"** in the menu
+2. Fill in recipients, subject, and content as usual
+3. Click the **"Zaplanuj wysyłkę"** button (instead of "Wyślij mail")
+4. In the dialog, select the **SMTP account** and the **date and time** for sending
+5. Click **"Zaplanuj"** to confirm
+
+### How scheduled sending works:
+
+- Scheduled emails are saved in `data_source/emails_to_sent.csv`
+- **When the app starts**, it automatically checks for emails that are due and sends them
+- To make sends look **natural**, emails are sent in **random 1-3 hour intervals** (not all at once)
+- You can view, manage, and delete scheduled emails on the **"Zaplanowane"** page
+- You can also manually trigger processing by clicking **"Wyślij zaległe teraz"** on the Zaplanowane page
+
+> ⚠️ **Important:** The app must be running (`npm run dev`) for scheduled emails to be processed.  
+> Emails are checked and sent when the app loads in the browser.
+
+### File format (`emails_to_sent.csv`):
+```
+id,to,from_account,subject,html,scheduled_date,status,created_at,next_send_after
+```
+
+> ⚠️ **Warning:** Do not manually edit this file unless you know what you're doing.
+
+---
+
+## 12. Shutting down the app
 
 When you are done working:
 
@@ -380,6 +415,7 @@ When you are done working:
 └── data_source\
     ├── accounts.csv        ← SMTP accounts (sending mailboxes)
     ├── brands.csv          ← Contact list (recipients)
+    ├── emails_to_sent.csv  ← Scheduled emails queue
     ├── links.csv           ← Website links
     └── sent_mails.csv      ← Sent email history (auto-generated)
 ```
@@ -410,18 +446,23 @@ coldmail-app/
 ├── data_source/                   # Flat-file "database"
 │   ├── accounts.csv               # SMTP credentials
 │   ├── brands.csv                 # Recipient contacts
+│   ├── emails_to_sent.csv         # Scheduled email queue
 │   ├── links.csv                  # Reusable website links
 │   └── sent_mails.csv             # Append-only email log
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx             # Root layout (Sidebar)
+│   │   ├── layout.tsx             # Root layout (Sidebar + ScheduledEmailProcessor)
 │   │   ├── page.tsx               # Root redirect → /compose
-│   │   ├── compose/page.tsx       # Main compose UI (client component)
+│   │   ├── compose/page.tsx       # Main compose UI + schedule button
+│   │   ├── scheduled/page.tsx     # Scheduled email management page
 │   │   ├── brands/page.tsx        # Brand/contact management
 │   │   ├── links/page.tsx         # Link management
 │   │   ├── logs/page.tsx          # Sent mail history
 │   │   └── api/
 │   │       ├── send-email/        # POST: send email via Nodemailer
+│   │       ├── schedule-email/    # POST: schedule email for future sending
+│   │       ├── scheduled-emails/  # GET: list / DELETE: remove scheduled emails
+│   │       ├── process-scheduled/ # POST: process due emails with 1-3h delays
 │   │       ├── improve-email/     # POST: improve content via OpenAI
 │   │       ├── accounts/          # GET/POST/DELETE SMTP accounts
 │   │       │   ├── test/          # POST: verify SMTP connection (new credentials)
@@ -430,7 +471,8 @@ coldmail-app/
 │   │       ├── links/             # GET/POST/DELETE links
 │   │       └── logs/              # GET email send logs
 │   └── components/
-│       └── Sidebar.tsx            # Navigation sidebar
+│       ├── Sidebar.tsx                  # Navigation sidebar
+│       └── ScheduledEmailProcessor.tsx  # Startup check for due emails
 └── .env.local                     # Environment variables (gitignored)
 ```
 
@@ -493,6 +535,11 @@ interface EmailLog {
   content: string; status: 'sent' | 'failed'; sentAt: string;
   files?: string[]; error?: string;
 }
+interface ScheduledEmail {
+  id: string; to: string; from_account: string; subject: string;
+  html: string; scheduled_date: string; status: 'pending' | 'sent' | 'failed';
+  created_at: string; next_send_after?: string;
+}
 ```
 
 ### Functions
@@ -506,6 +553,11 @@ interface EmailLog {
 | `getAccounts()` | Read SMTP accounts from `accounts.csv` |
 | `saveAccounts(accounts)` | Overwrite `accounts.csv` |
 | `getEmailLogs()` | Read all rows from `sent_mails.csv` |
+| `getScheduledEmails()` | Read all rows from `emails_to_sent.csv` |
+| `saveScheduledEmail(email)` | **Append** one row to `emails_to_sent.csv` |
+| `updateScheduledEmailStatus(id, status)` | Update status of a scheduled email |
+| `updateScheduledEmailNextSend(id, time)` | Set `next_send_after` for natural delay |
+| `deleteScheduledEmail(id)` | Remove a scheduled email from CSV |
 | `saveEmailLog(log)` | **Append** one row to `sent_mails.csv` (creates file + header if missing) |
 
 ---
@@ -581,6 +633,50 @@ Connection/greeting timeout: **8 seconds**.
 ### `POST /api/accounts/test-existing`
 
 Same as `test` but looks up credentials from `accounts.csv` by username – password is never sent from the client.
+
+---
+
+### `POST /api/schedule-email`
+
+Saves one or more emails for future sending.
+
+**Request body:**
+```json
+{
+  "to": "recipient@example.com, another@example.com",
+  "from_account": "sender@gmail.com",
+  "subject": "Subject line",
+  "html": "<p>Body HTML</p>",
+  "scheduled_date": "2026-03-01T10:00:00.000Z"
+}
+```
+
+- Multiple recipients (comma-separated) are split into individual scheduled emails.
+- Each email gets a unique UUID and `status: pending`.
+
+---
+
+### `GET /api/scheduled-emails`
+
+Returns all scheduled emails from `emails_to_sent.csv`.
+
+### `DELETE /api/scheduled-emails`
+
+Deletes a scheduled email by `id`.
+
+---
+
+### `POST /api/process-scheduled`
+
+Processes due scheduled emails with natural delays.
+
+- Finds all `pending` emails where `scheduled_date <= now`
+- Sends the first eligible email via SMTP (with `{{name}}` personalization)
+- Assigns a random **1-3 hour** `next_send_after` to the next email in queue
+- Stops processing until the delay expires
+- Returns: `{ processed, sent, failed, remaining }`
+
+This endpoint is called automatically on app startup via `ScheduledEmailProcessor`.
 
 ---
 

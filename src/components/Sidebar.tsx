@@ -5,12 +5,14 @@ import { usePathname } from 'next/navigation';
 import {
   Mail, Users, Link2, Send, BarChart2, Zap, ChevronDown,
   Plus, Trash2, Wifi, WifiOff, X, Loader2, CheckCircle, AlertCircle,
+  CalendarClock,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: BarChart2 },
   { href: '/compose', label: 'Wyślij mail', icon: Send },
+  { href: '/scheduled', label: 'Zaplanowane', icon: CalendarClock },
   { href: '/brands', label: 'Lista kontaktów', icon: Users },
   { href: '/links', label: 'Linki', icon: Link2 },
   { href: '/logs', label: 'Historia', icon: Mail },

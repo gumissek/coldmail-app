@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, Users, Link2, Eye, EyeOff, Sparkles, ChevronDown, ChevronUp, Check, Loader2, CheckSquare, Square, Paperclip, X, FileText, Trash2 } from 'lucide-react';
+import { Send, Users, Link2, Eye, EyeOff, Sparkles, ChevronDown, ChevronUp, Check, Loader2, CheckSquare, Square, Paperclip, X, FileText, Trash2, Clock, CalendarClock } from 'lucide-react';
 
 interface Brand {
   name: string;
@@ -59,6 +59,10 @@ export default function ComposePage() {
   // Send confirmation modal
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [modalAccount, setModalAccount] = useState<Account | null>(null);
+
+  // Schedule state
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -193,7 +197,7 @@ export default function ComposePage() {
     });
 
   /** Open modal: pre-load the currently selected localStorage account */
-  const openSendModal = () => {
+  const openSendModal = (isSchedule = false) => {
     if (!form.to || !form.subject || !form.html) {
       showToast('Uzupełnij wszystkie pola!', 'error');
       return;
@@ -208,6 +212,8 @@ export default function ComposePage() {
       if (raw) current = JSON.parse(raw) as Account;
     } catch { /* ignore */ }
     setModalAccount(current);
+    setScheduleMode(isSchedule);
+    if (!isSchedule) setScheduledDate('');
     setConfirmModalOpen(true);
   };
 
@@ -266,6 +272,50 @@ export default function ComposePage() {
       showToast(`Wysłano: ${successCount}, błędy: ${failCount}`, 'error');
     } else {
       showToast('Błąd wysyłania maili', 'error');
+    }
+
+    setSending(false);
+  };
+
+  /** Schedule emails for future sending */
+  const scheduleEmail = async () => {
+    if (!scheduledDate) {
+      showToast('Wybierz datę i godzinę wysyłki!', 'error');
+      return;
+    }
+    if (new Date(scheduledDate) <= new Date()) {
+      showToast('Data musi być w przyszłości!', 'error');
+      return;
+    }
+    if (!modalAccount) {
+      showToast('Wybierz konto nadawcy!', 'error');
+      return;
+    }
+    setConfirmModalOpen(false);
+    setSending(true);
+
+    try {
+      const res = await fetch('/api/schedule-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: form.to,
+          from_account: modalAccount.smtp_username,
+          subject: form.subject,
+          html: form.html,
+          scheduled_date: new Date(scheduledDate).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`✓ Zaplanowano wysyłkę ${data.count} mail(i) na ${new Date(scheduledDate).toLocaleString('pl-PL')}`);
+        clearForm();
+        setScheduledDate('');
+      } else {
+        showToast(data.error || 'Błąd planowania', 'error');
+      }
+    } catch {
+      showToast('Błąd połączenia z serwerem', 'error');
     }
 
     setSending(false);
@@ -535,7 +585,7 @@ export default function ComposePage() {
               )}
             </div>
 
-            {/* Send / Clear buttons */}
+            {/* Send / Schedule / Clear buttons */}
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <button
                 className="btn-secondary"
@@ -545,9 +595,19 @@ export default function ComposePage() {
               >
                 <Trash2 size={14} /> Wyczyść formularz
               </button>
-              <button className="btn-primary" onClick={openSendModal} disabled={sending} style={{ padding: '12px 28px', fontSize: 15 }}>
-                <Send size={16} /> {sending ? 'Wysyłanie...' : selectedBrands.length > 1 ? `Wyślij do ${selectedBrands.length} osób` : 'Wyślij mail'}
-              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  className="btn-secondary"
+                  onClick={() => openSendModal(true)}
+                  disabled={sending}
+                  style={{ padding: '12px 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 7, borderColor: 'rgba(108,99,255,0.4)', color: 'var(--accent)' }}
+                >
+                  <CalendarClock size={15} /> Zaplanuj wysyłkę
+                </button>
+                <button className="btn-primary" onClick={() => openSendModal(false)} disabled={sending} style={{ padding: '12px 28px', fontSize: 15 }}>
+                  <Send size={16} /> {sending ? 'Wysyłanie...' : selectedBrands.length > 1 ? `Wyślij do ${selectedBrands.length} osób` : 'Wyślij mail'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -689,10 +749,11 @@ export default function ComposePage() {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Send size={16} color="var(--accent)" /> Potwierdź wysyłkę
+              {scheduleMode ? <CalendarClock size={16} color="var(--accent)" /> : <Send size={16} color="var(--accent)" />}
+              {scheduleMode ? 'Zaplanuj wysyłkę' : 'Potwierdź wysyłkę'}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
-              Z jakiego konta e-mail chcesz wysłać tę wiadomość?
+              {scheduleMode ? 'Wybierz datę, godzinę i konto nadawcy.' : 'Z jakiego konta e-mail chcesz wysłać tę wiadomość?'}
             </p>
 
             {/* Account selector */}
@@ -727,6 +788,28 @@ export default function ComposePage() {
               )}
             </div>
 
+            {/* Schedule date picker */}
+            {scheduleMode && (
+              <div style={{ marginBottom: 18 }}>
+                <label className="label" style={{ fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Clock size={13} color="var(--accent)" /> Data i godzina wysyłki
+                </label>
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  style={{ fontSize: 13 }}
+                />
+                {scheduledDate && (
+                  <div style={{ marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>
+                    Maile zostaną wysłane po {new Date(scheduledDate).toLocaleString('pl-PL')} w losowych odstępach 1-3h
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Summary */}
             <div style={{
               padding: '10px 14px', borderRadius: 8,
@@ -746,13 +829,23 @@ export default function ComposePage() {
               >
                 Anuluj
               </button>
-              <button
-                className="btn-primary"
-                style={{ padding: '10px 22px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
-                onClick={sendEmail}
-              >
-                <Send size={14} /> Wyślij
-              </button>
+              {scheduleMode ? (
+                <button
+                  className="btn-primary"
+                  style={{ padding: '10px 22px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, background: 'linear-gradient(135deg, var(--accent), #8b5cf6)' }}
+                  onClick={scheduleEmail}
+                >
+                  <CalendarClock size={14} /> Zaplanuj
+                </button>
+              ) : (
+                <button
+                  className="btn-primary"
+                  style={{ padding: '10px 22px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+                  onClick={sendEmail}
+                >
+                  <Send size={14} /> Wyślij
+                </button>
+              )}
             </div>
           </div>
         </div>

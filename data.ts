@@ -102,3 +102,63 @@ export function saveEmailLog(log: EmailLog): void {
   const row = stringify([serialized], { header: !fileExists, columns: CSV_COLUMNS });
   fs.appendFileSync(SENT_MAILS_FILE, row);
 }
+
+// ── Scheduled Emails ────────────────────────────────────────────────────────
+
+const SCHEDULED_FILE = path.join(DATA_DIR, 'emails_to_sent.csv');
+const SCHEDULED_COLUMNS = ['id', 'to', 'from_account', 'subject', 'html', 'scheduled_date', 'status', 'created_at', 'next_send_after'];
+
+export interface ScheduledEmail {
+  id: string;
+  to: string;
+  from_account: string;   // smtp_username
+  subject: string;
+  html: string;
+  scheduled_date: string; // ISO date-time
+  status: 'pending' | 'sent' | 'failed';
+  created_at: string;
+  next_send_after?: string; // ISO date-time — earliest time this email can be sent
+}
+
+export function getScheduledEmails(): ScheduledEmail[] {
+  try {
+    const content = fs.readFileSync(SCHEDULED_FILE, 'utf-8');
+    return parse(content, { columns: true, skip_empty_lines: true }) as ScheduledEmail[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveScheduledEmail(email: ScheduledEmail): void {
+  const fileExists = fs.existsSync(SCHEDULED_FILE);
+  let hasContent = false;
+  if (fileExists) {
+    const content = fs.readFileSync(SCHEDULED_FILE, 'utf-8').trim();
+    hasContent = content.length > 0;
+  }
+  const row = stringify([email], { header: !hasContent, columns: SCHEDULED_COLUMNS });
+  fs.appendFileSync(SCHEDULED_FILE, row);
+}
+
+function rewriteScheduledFile(emails: ScheduledEmail[]): void {
+  const content = stringify(emails, { header: true, columns: SCHEDULED_COLUMNS });
+  fs.writeFileSync(SCHEDULED_FILE, content);
+}
+
+export function updateScheduledEmailStatus(id: string, status: 'sent' | 'failed'): void {
+  const emails = getScheduledEmails();
+  const updated = emails.map((e) => (e.id === id ? { ...e, status } : e));
+  rewriteScheduledFile(updated);
+}
+
+export function updateScheduledEmailNextSend(id: string, nextSendAfter: string): void {
+  const emails = getScheduledEmails();
+  const updated = emails.map((e) => (e.id === id ? { ...e, next_send_after: nextSendAfter } : e));
+  rewriteScheduledFile(updated);
+}
+
+export function deleteScheduledEmail(id: string): void {
+  const emails = getScheduledEmails();
+  const filtered = emails.filter((e) => e.id !== id);
+  rewriteScheduledFile(filtered);
+}
